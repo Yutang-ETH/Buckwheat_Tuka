@@ -1,0 +1,134 @@
+1) jellyfish to count k-mers based on the HiFi reads, then genomescope2 to estimate assembly size and heterozygosity
+# working directory, public/Yutangchen/Fabian/
+# Machine, The Dude
+# Conda environment, WGSalign
+# jellyfish v2.2.10
+jellyfish count -C -m 23 -s 50000000000 -t 30 -F 2 -o Tuka_23mer.jf <(zcat Fabian_hifi_all.fastq.gz)
+jellyfish histo -t 30 -h 1000000000 Tuka_23mer.jf > Tuka_23mer.histo
+
+# GenomeScope2, online
+
+2) circus plot to show the genomic features of the haplotype-resolved assembly, both haplomes visualized in one circus plot.
+# track 1, chr, gap
+# track 2, gene content
+# track 3, repeat content
+# track 4, HiFi read alignment coverage
+# track 5, GC content
+
+# working directory, /home/yutachen/public/Yutangchen/Fabian/Sci_Data_paper/source_data/final_results
+# Window size, 1 Mb
+# Machine, The Dude
+# Conda environment, WGSalign
+# Software tools: Seqkit v2.9.0, samtools v1.3.1, bedtools v2.31.1
+
+# extract only chrs from the diploid assembly, tuka_dip.fasta was made by concatenating the two haplomes
+seqkit grep -r -p chr.* Tuka_dip.fasta > Tuka_dip_chr.fasta
+
+# identify gaps
+seqkit locate -p N+ -G -P -r -i --bed Tuka_dip_chr.fasta > Tuka_dip_chr_gap.bed
+
+# make bedtools genome file
+samtools faidx Tuka_dip_chr.fasta
+cut -f1-2 Tuka_dip_chr.fasta.fai > Tuka_dip_chr.genome
+
+# make bedtools window file
+bedtools makewindows -g Tuka_dip_chr.genome -w 1000000 > Tuka_dip_chr_1Mb.bed
+
+# GC content
+bedtools nuc -fi Tuka_dip_chr.fasta -bed Tuka_dip_chr_1Mb.bed > Tuka_dip_chr.nuc
+
+# Gene content
+# prepare a bed file for genes for each haplome 
+awk -F "\t" -v OFS="\t" '$1~"chr" {if($3=="gene") print $1"_h1",$4,$5}' annotated_h1.gff3 | sort -k1,1 -k2,2n > gene_h1.bed
+awk -F "\t" -v OFS="\t" '$1~"chr" {if($3=="gene") print $1"_h2",$4,$5}' annotated_h2.gff3 | sort -k1,1 -k2,2n > gene_h2.bed
+# cat these two bed
+cat gene_h1.bed gene_h2.bed > gene_dip.bed
+# calculate bp% of genes per 1 Mb window
+bedtools coverage -a Tuka_dip_chr_1Mb.bed -b gene_dip.bed > gene_dip.cov
+
+# TE content
+# prepare a bed file for TEs
+awk -F "\t" -v OFS="\t" '$1~"chr" {print $1"_h1",$4,$5}' h1.fasta.mod.EDTA.TEanno.gff3 | sort -k1,1 -k2,2n > TE_h1.bed
+awk -F "\t" -v OFS="\t" '$1~"chr" {print $1"_h2",$4,$5}' h2.fasta.mod.EDTA.TEanno.gff3 | sort -k1,1 -k2,2n > TE_h2.bed
+# cat the two bed
+cat TE_h1.bed TE_h2.bed > TE_dip.bed
+# merge bed intervals
+bedtools merge -i TE_dip.bed > TE_dip_merged.bed
+# calculate bp% of TE per 1 Mb window
+bedtools coverage -a Tuka_dip_chr_1Mb.bed -b TE_dip_merged.bed > TE_dip.cov
+
+# hifi read alignment depth
+# working directory, /home/yutachen/public/Yutangchen/Fabian/map_hifi_to_asm
+# Machine, The Dude
+# Conda environment, GBS
+# Software tools: mosdepth v0.3.3
+mosdepth -n --fast-mode --by 1000000 -t 30 -m Tuka_dip_depth all_HiFi_to_Fabian_dip.bam
+zcat Tuka_dip_depth.regions.bed.gz | grep '^chr' > Tuka_dip_chr_depth.bed
+
+3) whole genome alignment, h1 vs h2, using FastGA
+# working directory, /home/yutachen/public/Yutangchen/Fabian/data/asm
+# machine, Big Lebowski
+# conda env, /scratch/yutang/diversity
+# software tools, fastga v1.3.1
+FastGA -v -T32 -pafm -f2 -s20000 -1:Tuka.aln Fabian_h1_final.fasta Fabian_h2_final.fasta
+ALNtoPAF -T4 Tuka.aln.1aln > h1_vs_h2.paf
+
+# filter alignment, only keep alignments between two homologous chromosomes
+awk -F '\t' -v OFS="\t" '{split($1,a,"_"); split($6,b,"_"); if(a[1]==b[1]) print $1,$3,$4,$6,$8,$9}' h1_vs_h2.paf > h1_vs_h2_chr.bed
+
+
+4) Hi-C contact map
+
+5) KAT plot, and estimate base-level accuracy based on KAT stats
+# working directory, P:\Yutangchen\Fabian\Sci_Data_paper\source_data\base_level_accuracy
+QV_nt_assembly_kmer.R
+
+6) calculate read stats
+# Illumina short reads for each parent
+# working directory, /home/yutachen/public/Yutangchen/Fabian/Illumina_Parents/MergedRunData
+seqkit stats -a -b 20230213.X-FE213_1_R1.fastq.gz 20230213.X-FE213_1_R2.fastq.gz 20230213.X-FE228_R1.fastq.gz 20230213.X-FE228_R2.fastq.gz > read.stats
+
+# Hifi long read stats
+# working directory, /home/yutachen/public/Yutangchen/Fabian
+seqkit stats -a -b Fabian_hifi_all.fastq.gz > all_hifi.stats
+
+# Hi-C read stats
+# fastqc was done before
+
+# RNA-seq read stats
+# machine, big lebowski
+# working directory, /scratch/axelle/gene_prediction/inputs/RNA_seq
+seqkit stats -a -b rna_seq_1.fq.gz rna_seq_2.fq.gz > ~/public/Yutangchen/Fabian/Sci_Data_paper/source_data/final_results/RNA_seq_qc/RNA_seq.stats
+
+# ISO-seq read stats
+# machine, big lebowski
+# working directory, /scratch/axelle/gene_prediction/inputs/ISO_seq
+
+7) detect telomere and centromere
+# machine, The Dude
+# working directory, /home/yutachen/public/Yutangchen/Fabian/Sci_Data_paper/source_data/final_results
+
+mamba create -n telocent
+mamba install python=3.11.4 minimap2=2.26 mummer4=4.0.0rc1 trf=4.09.1 cd-hit=4.8.1 blast=2.14.0 tidk=0.2.31 r=4.3 r-rideogram=0.2.2 r-ggplot2=3.4.4 gnuplot=5.4 unimap=0.1
+git clone https://github.com/aaranyue/quarTeT
+
+python3 /scratch/yutang/quarTeT/quartet.py TeloExplorer -i Tuka_dip_chr.fasta -m 10 -c plant
+# I don't believe quartet's results, try tidk directly with GAAACC, suggested by this paper, https://www.sciencedirect.com/science/article/pii/S2211124725003924
+tidk search --string GAAACC --output tidk --dir tmp --extension tsv Tuka_dip_chr.fasta
+# only keep windows with more than 100 occurance
+awk -F "\t" -v OFS="\t" '{if($3>=100 || $4>=100) print $1,$2,$3,$4,$5}' tidk_telomeric_repeat_windows.tsv > tuka_telo.tsv
+
+# quartet did not predict centromere
+mamba create -n centier bioconda::genometools bioconda::pyfastx bioconda::ltr_retriever
+# it is hard to install centier
+
+# I try my own pipeline to detect non-rep and rep regions in eahc haplome
+# working directory, /home/yutachen/public/Yutangchen/Fabian/data/asm
+kat sect -E -F -t 16 -M 2 -o h1 Fabian_h1_final.fasta Fabian_h1_final.fasta
+kat sect -E -F -t 16 -M 2 -o h2 Fabian_h2_final.fasta Fabian_h2_final.fasta
+# store non-rep regions in bed format
+grep '^>chr' h2-non_repetitive.fa | cut -f1,4,5 -d':' | sed -e 's/___region//' -e 's/_cov//' -e 's/>//' | tr ':' '\t' | bedtools merge -i - > h2-non_repetitive.bed &
+grep '^>chr' h1-non_repetitive.fa | cut -f1,4,5 -d':' | sed -e 's/___region//' -e 's/_cov//' -e 's/>//' | tr ':' '\t' | bedtools merge -i - > h1-non_repetitive.bed &
+# calculate coverage
+cat h1-non_repetitive.bed h2-non_repetitive.bed > dip-non_rep.bed
+bedtools coverage -a ../../Sci_Data_paper/source_data/final_results/Tuka_dip_chr_1Mb.bed -b dip-non_rep.bed > dip-non_repetitive.cov
