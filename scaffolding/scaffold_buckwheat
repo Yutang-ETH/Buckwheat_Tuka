@@ -1,0 +1,77 @@
+# this is a snakemake pipeline for scaffolding haplotype-resolved assemblies of buckwheat
+
+# author: Yutang Chen,  MPB, ETH Zurich
+
+# 25.07.2024
+
+################################################################################
+# should make some folders to store the input data before running the pipeline, mkdir ref contig
+# specify data
+SAMPLE = 'Fabian' # sample name
+hap = ['h1', 'h2']
+ref = 'FesPL4_chr.fa' # chromosome-level reference, only pseudo-chromosomes
+
+# ragtag scaffold parameters
+minimap2_threads = 30
+minimap2_parameters = "'-x asm5 -t 30 -f 0.0002'"
+minimap2_path = '/home/yutachen/anaconda3/envs/ragtag/bin/minimap2'
+
+# ragtag parameters
+ragtag_filter_length = 50000
+group_confidence = 0.2
+
+################################################################################
+rule all:
+	input:
+		expand('ragtag_{haplotype}/ragtag.scaffold.renamed.fasta', haplotype = hap)
+################################################################################
+# ragtag steps
+# scaffold yahs scaffolds to chromosomes using ragtag with minimap2
+
+# get a list of short contigs with user defined length (50 kb suggested)
+# these short contigs will not be anchored to psuedo-chromosomes by RagTag
+rule ragtag_filter:
+	input:
+		contigs = 'contig/{haplotype}/' + SAMPLE + '_' + '{haplotype}.fasta'
+	output:
+		'contig/{haplotype}/' + SAMPLE + '_' + '{haplotype}_short.list'
+	params:
+		max_length = ragtag_filter_length
+	shell:
+		'''
+		seqkit seq -n -i -M {params.max_length} {input} > {output}
+		'''
+
+# ragtag
+rule ragtag_scaffolding:
+	input:
+		ref = 'ref/' + ref,
+		contigs = 'contig/{haplotype}/' + SAMPLE + '_' + '{haplotype}.fasta',
+		skip_list = 'contig/{haplotype}/' + SAMPLE + '_' + '{haplotype}_short.list'
+	output:
+		fasta = 'ragtag_{haplotype}/ragtag.scaffold.fasta'
+	params:
+		output = 'ragtag_{haplotype}',
+		myminimap = minimap2_path,
+		mm2 = minimap2_parameters,
+		mgf = group_confidence
+	threads:
+		minimap2_threads
+	shell:
+		'''
+		ragtag.py scaffold -t {threads} -j {input.skip_list} -u --mm2-params {params.mm2} -i {params.mgf} --aligner {params.myminimap} -o {params.output} {input.ref} {input.contigs}
+		'''
+
+################################################################################
+# change the header of each haplotype
+
+# replace RagTag in the header with h1 or h2
+rule change_hap_fasta_header:
+	input:
+		fasta = 'ragtag_{haplotype}/ragtag.scaffold.fasta'
+	output:
+		fasta_renamed = 'ragtag_{haplotype}/ragtag.scaffold.renamed.fasta'
+	shell:
+		'''
+		sed 's/RagTag/{wildcards.haplotype}/' {input} > {output}
+		'''
