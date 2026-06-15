@@ -135,10 +135,10 @@ for (x in mychrinfo$chr) {
               labels = seq(0, mychrinfo[mychrinfo$chr == x, 3]/10^6, by = 50),
               sector.index = x,
               track.index = 1,
-              labels.cex = 0.5,
+              labels.cex = 0.65,
               lwd = 1,
               minor.ticks = 0,
-              major.tick.length = mm_y(0.2),
+              major.tick.length = mm_y(0.8),
               direction = "outside",
               labels.facing = "outside",
               labels.pos.adjust = T)
@@ -208,7 +208,7 @@ for (x in mychrinfo$chr) {
 
 # add label to each track
 circos.text(x = 0, y = mm_y(5), labels = 'A', sector.index = mychrinfo$chr[1], track.index = 1,
-            facing = "bending.inside", pos = 2, offset = 1.5, cex = 1)
+            facing = "bending.inside", pos = 2, offset = 1.5, cex = 1.2)
 
 # set gap size between tracks
 set_track_gap(mm_h(0))
@@ -244,15 +244,15 @@ for(i in 1:nrow(mychrinfo)){
 # add axis
 circos.yaxis(
   side = "left",
-  at = seq(0, 100, 25),
-  labels = seq(0, 100, 25),
-  labels.cex = 0.5,
+  at = seq(0, 100, 50),
+  labels = seq(0, 100, 50),
+  labels.cex = 0.8,
   tick.length = convert_x(0.1, "mm", mychrinfo$chr[1], 2),
   sector.index = mychrinfo$chr[1])
 
 # add label
 circos.text(x = 0, y = mm_y(12), labels = 'B', sector.index = mychrinfo$chr[1], track.index = 2,
-            facing = "bending.inside", pos = 2, offset = 1.5, cex = 1)
+            facing = "bending.inside", pos = 2, offset = 1.5, cex = 1.2)
 
 # set gap size between tracks
 set_track_gap(mm_h(3))
@@ -278,15 +278,15 @@ for(i in 1:nrow(mychrinfo)){
 # add axis
 circos.yaxis(
   side = "left",
-  at = seq(0, 100, 25),
-  labels = seq(0, 100, 25),
-  labels.cex = 0.5,
+  at = seq(0, 100, 50),
+  labels = seq(0, 100, 50),
+  labels.cex = 0.8,
   tick.length = convert_x(0.1, "mm", mychrinfo$chr[1], 3),
   sector.index = mychrinfo$chr[1])
 
 # add label
 circos.text(x = 0, y = mm_y(10), labels = 'C', sector.index = mychrinfo$chr[1], track.index = 3,
-            facing = "bending.inside", pos = 2, offset = 1.5, cex = 1)
+            facing = "bending.inside", pos = 2, offset = 1.5, cex = 1.2)
 
 # set gap size between tracks
 set_track_gap(mm_h(3))
@@ -310,15 +310,15 @@ for(i in 1:nrow(mychrinfo)){
 # add axis
 circos.yaxis(
   side = "left",
-  at = seq(0, 100, 25),
-  labels = seq(0, 100, 25),
-  labels.cex = 0.5,
+  at = seq(0, 100, 50),
+  labels = seq(0, 100, 50),
+  labels.cex = 0.8,
   tick.length = convert_x(0.1, "mm", mychrinfo$chr[1], 4),
   sector.index = mychrinfo$chr[1])
 
 # add lable
 circos.text(x = 0, y = mm_y(7), labels = 'D', sector.index = mychrinfo$chr[1], track.index = 4,
-            facing = "bending.inside", pos = 2, offset = 1.5, cex = 1)
+            facing = "bending.inside", pos = 2, offset = 1.5, cex = 1.2)
 
 for(i in 1:nrow(link)){
   circos.link(link[i, 1], link[i, 2], link[i, 4], link[i, 5], col = "darkseagreen")
